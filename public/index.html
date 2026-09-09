@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="O5t9RJHzYq8NLYDtFk82EU">
+<head data-page-node-id="b6Bv4zubNbg99dEUscUXXL">
+<meta charset="UTF-8" data-page-node-id="z5sf7Oy6hRdEZMM6o6BPxb">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="HTbXh28HilWexi2NfgFHXZ">
+<title>AI 图片工坊 · 上传改图</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --text: #1f2329;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --teal: #0f766e;
+    --danger: #dc2626;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+  .logo .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--brand); }
+  .btn {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 9px 16px; border-radius: 10px; cursor: pointer; font-size: 14px;
+    transition: all .15s;
+  }
+  .btn:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 500; }
+  .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+  .tabs { display: flex; gap: 6px; background: #eceef2; padding: 4px; border-radius: 12px; width: fit-content; margin-bottom: 18px; }
+  .tab { padding: 8px 20px; border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--muted); border: none; background: transparent; }
+  .tab.active { background: var(--card); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+
+  .drop {
+    border: 2px dashed #cbd5e1; border-radius: var(--radius); padding: 34px 20px;
+    text-align: center; cursor: pointer; transition: all .15s; background: #fafbfc;
+  }
+  .drop:hover, .drop.drag { border-color: var(--brand); background: #f0f5ff; }
+  .drop .big { font-size: 15px; font-weight: 500; }
+  .drop .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .preview { margin-top: 16px; text-align: center; }
+  .preview img { max-width: 100%; max-height: 320px; border-radius: 10px; border: 1px solid var(--line); }
+  .preview .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    border: 1px solid var(--line); background: #fff; padding: 6px 14px; border-radius: 999px;
+    font-size: 13px; cursor: pointer; color: var(--muted); transition: all .15s;
+  }
+  .chip:hover { border-color: var(--teal); color: var(--teal); }
+
+  .tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tool {
+    border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 13px 15px;
+    cursor: pointer; text-align: left; transition: all .15s; font-family: inherit;
+  }
+  .tool:hover { border-color: var(--brand); }
+  .tool.active { border-color: var(--brand); background: #f0f5ff; box-shadow: 0 0 0 1px var(--brand); }
+  .tool .t-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .tool .t-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .model-hint { font-size: 12px; color: var(--teal); margin-top: 10px; }
+
+  label { font-size: 13px; color: var(--muted); display: block; margin: 14px 0 6px; }
+  textarea, select, input[type="text"], input[type="password"] {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
+    font-size: 14px; font-family: inherit; color: var(--text); background: #fff; resize: vertical;
+  }
+  textarea:focus, select:focus, input:focus { outline: none; border-color: var(--brand); }
+  textarea { min-height: 88px; }
+  .row { display: flex; gap: 14px; }
+  .row > div { flex: 1; }
+
+  .actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .actions .btn-primary { flex: 1; padding: 13px; font-size: 15px; }
+  .status { font-size: 13px; color: var(--muted); }
+
+  .result { text-align: center; }
+  .result img { max-width: 100%; max-height: 460px; border-radius: 12px; border: 1px solid var(--line); }
+  .result .meta { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .result .btns { display: flex; gap: 12px; justify-content: center; margin-top: 14px; }
+
+  .error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-top: 14px; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: #fff; border-radius: 16px; padding: 26px; width: 100%; max-width: 460px; }
+  .modal h2 { font-size: 16px; margin-bottom: 18px; }
+  .modal .close-row { display: flex; gap: 12px; margin-top: 20px; }
+  .modal .close-row .btn { flex: 1; }
+  .tiny { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  code { background: #eef1f5; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+  .redeem-row { display: flex; gap: 10px; }
+  .redeem-row input { flex: 1; }
+  #redeemStatus { font-size: 13px; margin-top: 8px; color: var(--muted); }
+</style>
+</head>
+<body data-page-node-id="urFrNuBXEIIoCpC0HUhSlT">
+<div class="wrap" data-page-node-id="fkWA1rKoKdqANHwSkzQHsx">
+  <header data-page-node-id="iXvjRctgrCbLlPICtFm7Cf">
+    <div class="logo" data-page-node-id="7fZr2oWaaCpmrEk0ZbVQE1"><span class="dot" data-page-node-id="V2rC0uW5kLFNGW96zdny4s"></span>AI 图片工坊</div>
+  </header>
+
+  <!-- 兑换码 -->
+  <div class="card" id="redeemCard">
+    <h2>兑换码</h2>
+    <div class="redeem-row">
+      <input type="text" id="redeemCode" placeholder="请输入兑换码，例如 ABCD-EFGH-JKLM" autocomplete="off">
+      <button class="btn btn-primary" id="btnRedeem">激活</button>
+    </div>
+    <div id="redeemStatus">未激活 · 请输入兑换码</div>
+  </div>
+
+  <div class="tabs" data-page-node-id="6FajxkbgYZBFKQvpbAvqyu">
+    <button class="tab active" data-mode="edit" data-page-node-id="AVoTKGpqDs0RKoFu1Kbteb">图生图 · 改图</button>
+    <button class="tab" data-mode="generate" data-page-node-id="Ez4GjZPXfEcAl48SgB5QtA">文生图</button>
+  </div>
+
+  <!-- 图生图 -->
+  <div id="panelEdit" class="card" data-page-node-id="nWtuVEm34Dfx6ZbgQgn2On">
+    <h2 data-page-node-id="iLbwogCe3W7TElMxtZvTdQ">上传图片，然后告诉 AI 想怎么改</h2>
+    <div class="drop" id="drop" data-page-node-id="r4YffwzhFCj7n0YE7dofEH">
+      <div class="big" data-page-node-id="Rb6rlv7s8cV3tMMZjMDd3s">点击上传 或 拖拽图片到这里</div>
+      <div class="sub" data-page-node-id="9P6jU36or7749r2sXkGBhP">支持 JPG / PNG / WebP，最大 25MB</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" hidden data-page-node-id="tYx9ZjNEH9Rsxi8lUncGGG">
+    <div class="preview" id="previewWrap" style="display:none" data-page-node-id="hrX4QfQZiKsKNMupqBvUVO">
+      <img id="previewImg" alt="预览" data-page-node-id="DOx6dxqdYStYAGrrqdqOKh">
+      <div class="hint" id="previewHint" data-page-node-id="O5zr5Od8EXcep0gXWn9sKQ"></div>
+    </div>
+  </div>
+
+  <!-- 快捷功能：不同功能绑定不同档次模型 -->
+  <div class="card" id="toolCard">
+    <h2>快捷功能 <span style="font-weight:400;color:var(--muted);font-size:13px">· 一键选择，自动匹配模型</span></h2>
+    <div class="tools" id="tools"></div>
+    <div class="model-hint" id="toolModelHint">当前模型：gpt-image-2（普通）</div>
+  </div>
+
+  <!-- 文生图 -->
+  <div id="panelGenerate" class="card" style="display:none" data-page-node-id="x8B5KjImqFPpCgsqtEvBvT">
+    <h2 data-page-node-id="avGLwq3BNwcTsPFzFqFpPH">用一句话描述你想生成的图片</h2>
+  </div>
+
+  <div class="card" data-page-node-id="WgEErsVXHHueHp8RuiqouS">
+    <div class="chips" id="chips" data-page-node-id="VzAWEAAjavDUGJYj9aSDD4"></div>
+    <label data-page-node-id="eWOdAJ6cHIyYVA6CiQjbam">修改 / 生成描述</label>
+    <textarea id="prompt" placeholder="例如：把背景换成纯白色摄影棚，保留人物主体，提高清晰度…"></textarea>
+
+    <div class="row" data-page-node-id="0xsVDYlwna0Ia9sR2bbnLG">
+      <div data-page-node-id="YuBnBNW5QH3o4uxzsJBaBU">
+        <label data-page-node-id="EG9SzQB5OEEj4Qlb6EkSZh">尺寸</label>
+        <select id="size" data-page-node-id="7897ZfkApBENAnHRA3H01J">
+          <option value="1024x1024" selected data-page-node-id="Qc3YCcXc4JUocGxNCfY4GC">1024 × 1024（方形）</option>
+          <option value="1024x1536" data-page-node-id="qAYoycDEeuo2258119Ahny">1024 × 1536（竖图）</option>
+          <option value="1536x1024" data-page-node-id="31kkD1IFnb1oz5779ANqkY">1536 × 1024（横图）</option>
+        </select>
+      </div>
+      <div data-page-node-id="YvKIcacjuaVPbWex5heHDl">
+        <label data-page-node-id="AvBq3mt1tOFqUFAkuqnVO7">画质</label>
+        <select id="quality" data-page-node-id="KlPfOFXnHWZlAaLw6vbA19">
+          <option value="medium" selected data-page-node-id="pkym2LaNF0YhcFsA1pnm1R">中等</option>
+          <option value="low" data-page-node-id="hr3jpTcv22ZaImvQRMkGmC">低（快）</option>
+          <option value="high" data-page-node-id="A11b6tIx0IpTgllpb0RSR5">高（慢、更贵）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions" data-page-node-id="mbyY7E0xIujOjf7W8cWnoW">
+      <button class="btn-primary" id="btnGo" data-page-node-id="Sw51Ybcv1imlOSgwWjvhMD">开始生成</button>
+      <span class="status" id="status" data-page-node-id="BueSZDt5GIZVZ7HBARdLko"></span>
+    </div>
+    <div class="error" id="error" style="display:none" data-page-node-id="aY0eRlFoDuFcxKD6dN1J4T"></div>
+  </div>
+
+  <div class="card result" id="resultCard" style="display:none" data-page-node-id="qzJHcyRGSX5PyyNGmGeFTi">
+    <h2 style="text-align:left" data-page-node-id="ELNCYlS54T79nBuADfEwKz">生成结果</h2>
+    <img id="resultImg" alt="结果" data-page-node-id="TsVAoAhV9ETssPvr4wbaiC">
+    <div class="meta" id="resultMeta" data-page-node-id="GHJ7Wclo46nTV33KsagiEM"></div>
+    <div class="btns" data-page-node-id="aDwjRJpGWEtjUfYiGiAthO">
+      <button class="btn" id="btnDownload" data-page-node-id="DfKYaAFbawOPrs8AJVyDKp">下载图片</button>
+      <button class="btn" id="btnAgain" data-page-node-id="VvccrADsNN3ya9djswQO7j">再改一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRESETS = [
+  { label: '去背景', prompt: 'Remove the background and keep only the main subject, transparent background.' },
+  { label: '纯白背景', prompt: 'Change the background to a clean solid white studio background, keep the subject unchanged.' },
+  { label: '卡通风格', prompt: 'Convert the image to a cute cartoon / anime illustration style.' },
+  { label: '写实增强', prompt: 'Make it photorealistic, enhance details and resolution.' },
+  { label: '换纯色背景', prompt: 'Replace the background with a soft solid pastel color, keep the subject sharp.' },
+  { label: '黑白', prompt: 'Convert the image to a high-contrast black and white photo.' },
+];
+
+// 快捷功能：每个绑定一个模型（不同难度不同档次），内置精调 prompt，客户一键生成
+const TOOLS = [
+  {
+    id: 'sharpen', label: '图片模糊变清晰', desc: '普通模型 · 快 · 便宜',
+    model: 'gpt-image-2',
+    prompt: 'Enhance this blurry photo and make it sharp and crystal clear. Restore fine details, improve resolution and focus, keep the content unchanged.',
+  },
+  {
+    id: 'restore', label: '老照片修复', desc: 'Pro 模型 · 精细修复划痕褪色',
+    model: 'gpt-image-2-pro',
+    prompt: 'Restore this old damaged photograph: remove scratches, dust, stains and tears, fix fading and color cast, enhance clarity and bring back natural colors. Keep the people and composition exactly the same.',
+  },
+  {
+    id: 'season', label: '四季型人格分析', desc: '春夏秋冬季型 · 色彩+气质',
+    model: 'gpt-image-2-pro', size: '1024x1536',
+    prompt: `Based on this portrait photo, create an elegant "Seasonal Color Personality Analysis" card (Spring / Summer / Autumn / Winter personal color type). Keep the person's real facial features, face shape and skin tone — do not over-retouch, do not swap the face. Show: 1) a ranked fit for the four seasons, 2) an overall verdict, 3) the recommended color range / palette, 4) temperament keywords. Clean, high-end, professional stylist-report and magazine layout. Visual-first, very short text labels only, written in Chinese. Vertical 4:5 ratio, high resolution, small text and thumbnails stay sharp.`,
+  },
+  {
+    id: 'color', label: '色彩分析', desc: '服装颜色上身 · 推荐/避免',
+    model: 'gpt-image-2-pro', size: '1024x1536',
+    prompt: `Based on this portrait photo, create a high-end "Personal Color Analysis" card. Keep the person's real facial features, skin tone and face shape — do not over-retouch, do not swap the face. Show the same person wearing different clothing colors side by side, clearly grouped into recommended colors vs colors to avoid, so it is obvious which colors flatter the skin and lift the complexion. Clean, fashionable, professional stylist-report layout. Visual-first, only short Chinese labels (推荐 / 普通 / 避免), no long text. Vertical 4:5 ratio, high resolution, suitable for social media.`,
+  },
+  {
+    id: 'makeup', label: '妆容分析', desc: '眉眼鼻唇 · 妆感方向',
+    model: 'gpt-image-2-pro', size: '1024x1536',
+    prompt: `Based on this portrait photo, create an elegant "Makeup Analysis Guide" infographic in a Chinese beauty-magazine style. Keep the person's real face and features recognizable — do not over-retouch, do not swap the face. Show: 1) facial feature analysis (eyes, brows, nose, lips), 2) makeup suggestions, 3) makeup style tags (自然 / 提气色 / 柔和), 4) recommended makeup colors, 5) overall makeup direction. Clean, fashionable, visual-first layout, very short Chinese labels only, no long paragraphs. Vertical 4:5 ratio, high resolution, suitable for social media.`,
+  },
+  {
+    id: 'hairstyle', label: '发型分析', desc: '长发短发刘海 · 最适合/不建议',
+    model: 'gpt-image-2-pro', size: '1024x1536',
+    prompt: `Based on this portrait photo, create a high-end "Hairstyle Analysis" card. Keep the person's real facial features and face shape — do not over-retouch, do not swap the face. Show different hairstyles on the same person side by side (long, short, bangs, curly, straight, layered, tied-up), clearly grouped into 最适合 / 普通 / 不建议, so it is obvious which hairstyles flatter the face and elevate the look. Clean, fashionable, professional hair-stylist report layout. Visual-first, only short Chinese labels, no long text. Vertical 4:5 ratio, high resolution, suitable for social media.`,
+  },
+];
+
+const MODEL_NAMES = {
+  'gpt-image-2': 'gpt-image-2（普通）',
+  'gpt-image-2-pro': 'gpt-image-2-pro（Pro）',
+  'gpt-image-2-max': 'gpt-image-2-max（超清）',
+  'gpt-image-2-plus': 'gpt-image-2-plus',
+};
+
+let currentMode = 'edit';
+let currentFile = null;
+let activeCode = null;   // { code, remaining }
+let selectedModel = 'gpt-image-2';   // 当前选用模型（由快捷功能或默认决定）
+
+const $ = (id) => document.getElementById(id);
+
+function setError(msg) {
+  const el = $('error');
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else { el.style.display = 'none'; }
+}
+
+function renderChips() {
+  $('chips').innerHTML = '';
+  PRESETS.forEach((p) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = p.label;
+    b.onclick = () => { $('prompt').value = p.prompt; resetModel(); };
+    $('chips').appendChild(b);
+  });
+}
+
+// ===== 快捷功能：一键选功能 + 匹配模型 =====
+function updateModelHint() {
+  $('toolModelHint').textContent = '当前模型：' + (MODEL_NAMES[selectedModel] || selectedModel);
+}
+function resetModel() {
+  selectedModel = 'gpt-image-2';
+  document.querySelectorAll('.tool').forEach((el) => el.classList.remove('active'));
+  updateModelHint();
+}
+function selectTool(t) {
+  selectedModel = t.model;
+  $('prompt').value = t.prompt;
+  // 分析类按钮自动切竖图（4:5 接近），实用类切回方形
+  $('size').value = t.size || '1024x1024';
+  document.querySelectorAll('.tool').forEach((el, i) => el.classList.toggle('active', TOOLS[i].id === t.id));
+  updateModelHint();
+}
+function renderTools() {
+  $('tools').innerHTML = '';
+  TOOLS.forEach((t) => {
+    const b = document.createElement('button');
+    b.className = 'tool';
+    b.innerHTML = `<div class="t-name">${t.label}</div><div class="t-desc">${t.desc}</div>`;
+    b.onclick = () => selectTool(t);
+    $('tools').appendChild(b);
+  });
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.mode === mode));
+  $('panelEdit').style.display = mode === 'edit' ? '' : 'none';
+  $('toolCard').style.display = mode === 'edit' ? '' : 'none';
+  $('panelGenerate').style.display = mode === 'generate' ? '' : 'none';
+  $('btnGo').textContent = mode === 'edit' ? '开始改图' : '开始生成';
+  $('prompt').placeholder = mode === 'edit'
+    ? '例如：把背景换成纯白色摄影棚，保留人物主体…'
+    : '例如：一只戴着墨镜的柴犬，坐在沙滩上，日系清新风格…';
+}
+
+function setStatus(msg) { $('status').textContent = msg; }
+
+// ===== 兑换码 =====
+const codeKey = 'mugua_active_code';
+function loadActiveCode() { try { return JSON.parse(localStorage.getItem(codeKey)) || null; } catch { return null; } }
+function saveActiveCode(c) { localStorage.setItem(codeKey, JSON.stringify(c)); }
+
+function updateRedeemUI() {
+  const el = $('redeemStatus');
+  if (activeCode && activeCode.code) {
+    if (activeCode.remaining > 0) {
+      el.textContent = `已激活：${activeCode.code} · 剩余 ${activeCode.remaining} 次`;
+      el.style.color = 'var(--teal)';
+    } else {
+      el.textContent = `${activeCode.code} 额度已用完，请购买新兑换码`;
+      el.style.color = 'var(--danger)';
+    }
+  } else {
+    el.textContent = '未激活 · 请输入兑换码（购买服务后获得）';
+    el.style.color = 'var(--muted)';
+  }
+}
+
+async function queryCode(code) {
+  const res = await fetch('/api/redeem', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
+  if (!res.ok) throw new Error(data.error || '激活失败');
+  return data;
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function dataUrlFromResult(item) {
+  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  if (item.url) return item.url;
+  return null;
+}
+
+async function doGenerate() {
+  const prompt = $('prompt').value.trim();
+  if (!prompt) { setError('请填写描述。'); return; }
+  if (!activeCode || !activeCode.code) { setError('请先输入兑换码并激活，才能生成图片。'); $('redeemCode').focus(); return; }
+  if (activeCode.remaining <= 0) { setError('兑换码额度已用完，请购买新的兑换码。'); return; }
+
+  setError(null);
+  setStatus('生成中…');
+  $('btnGo').disabled = true;
+
+  try {
+    let res, data;
+    if (currentMode === 'edit') {
+      if (!currentFile) { setError('请先上传图片。'); setStatus(''); $('btnGo').disabled = false; return; }
+      const fd = new FormData();
+      fd.append('image', currentFile);
+      fd.append('prompt', prompt);
+      fd.append('code', activeCode.code);
+      fd.append('model', selectedModel);
+      fd.append('size', $('size').value);
+      fd.append('quality', $('quality').value);
+      fd.append('output_format', 'png');
+      res = await fetch('/api/edit', { method: 'POST', body: fd });
+    } else {
+      res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt, code: activeCode.code, model: selectedModel,
+          size: $('size').value, quality: $('quality').value,
+        }),
+      });
+    }
+    const text = await res.text();
+    data = {};
+    try { data = text ? JSON.parse(text) : {}; }
+    catch { data = { error: text || `服务器返回了无法解析的响应 (${res.status})` }; }
+    if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
+
+    const item = (data.data && data.data[0]) || {};
+    const url = dataUrlFromResult(item);
+    if (!url) throw new Error('接口没有返回图片数据：' + JSON.stringify(data).slice(0, 200));
+
+    $('resultImg').src = url;
+    $('resultMeta').textContent = `模式：${currentMode === 'edit' ? '图生图' : '文生图'} · 模型：${selectedModel} · 尺寸：${$('size').value}`;
+    $('resultCard').style.display = '';
+    $('resultImg').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    $('resultImg').dataset.src = url;
+
+    if (typeof data.remaining === 'number') {
+      activeCode.remaining = data.remaining;
+      saveActiveCode(activeCode);
+      updateRedeemUI();
+    }
+  } catch (e) {
+    setError(e.message);
+  } finally {
+    setStatus('');
+    $('btnGo').disabled = false;
+  }
+}
+
+function downloadResult() {
+  const src = $('resultImg').dataset.src || $('resultImg').src;
+  if (!src) return;
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = 'result.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// 上传交互
+$('drop').addEventListener('click', () => $('fileInput').click());
+$('drop').addEventListener('dragover', (e) => { e.preventDefault(); $('drop').classList.add('drag'); });
+$('drop').addEventListener('dragleave', () => $('drop').classList.remove('drag'));
+$('drop').addEventListener('drop', (e) => {
+  e.preventDefault();
+  $('drop').classList.remove('drag');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+$('fileInput').addEventListener('change', (e) => { if (e.target.files.length) setFile(e.target.files[0]); });
+
+function setFile(file) {
+  if (!file.type.startsWith('image/')) { setError('请选择图片文件。'); return; }
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = () => {
+    $('previewImg').src = reader.result;
+    $('previewHint').textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    $('previewWrap').style.display = '';
+    setError(null);
+  };
+  reader.readAsDataURL(file);
+}
+
+// 其他按钮
+$('btnGo').onclick = doGenerate;
+$('btnDownload').onclick = downloadResult;
+$('btnAgain').onclick = () => $('resultCard').scrollIntoView({ behavior: 'smooth' });
+document.querySelectorAll('.tab').forEach((t) => t.onclick = () => switchMode(t.dataset.mode));
+
+// 兑换码激活
+$('btnRedeem').onclick = async () => {
+  const code = $('redeemCode').value.trim();
+  if (!code) { setError('请输入兑换码。'); return; }
+  setError(null);
+  try {
+    const info = await queryCode(code);
+    activeCode = { code: info.code, remaining: info.remaining };
+    saveActiveCode(activeCode);
+    $('redeemCode').value = '';
+    updateRedeemUI();
+  } catch (e) { setError(e.message); }
+};
+
+// init
+renderChips();
+renderTools();
+switchMode('edit');
+updateModelHint();
+activeCode = loadActiveCode();
+updateRedeemUI();
+if (activeCode && activeCode.code) {
+  queryCode(activeCode.code).then((info) => {
+    activeCode.remaining = info.remaining;
+    saveActiveCode(activeCode);
+    updateRedeemUI();
+  }).catch(() => { /* 码失效时保持原显示 */ });
+}
+</script>
+</body>
+</html>
