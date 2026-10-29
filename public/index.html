@@ -148,7 +148,7 @@
   <div class="card" id="toolCard">
     <h2>快捷功能 <span style="font-weight:400;color:var(--muted);font-size:13px">· 一键选择，自动匹配模型</span></h2>
     <div class="tools" id="tools"></div>
-    <div class="model-hint" id="toolModelHint">当前模型：gpt-image-2（普通）</div>
+    <div class="model-hint" id="toolModelHint">当前模型：gpt-image-2-pro（Pro）</div>
   </div>
 
   <!-- 文生图 -->
@@ -211,8 +211,8 @@ const PRESETS = [
 // 快捷功能：每个绑定一个模型（不同难度不同档次），内置精调 prompt，客户一键生成
 const TOOLS = [
   {
-    id: 'sharpen', label: '图片模糊变清晰', desc: '普通模型 · 快 · 便宜',
-    model: 'gpt-image-2',
+    id: 'sharpen', label: '图片模糊变清晰', desc: 'Pro 模型 · 清晰增强',
+    model: 'gpt-image-2-pro',
     prompt: 'Enhance this blurry photo and make it sharp and crystal clear. Restore fine details, improve resolution and focus, keep the content unchanged.',
   },
   {
@@ -252,7 +252,7 @@ const MODEL_NAMES = {
 let currentMode = 'edit';
 let currentFile = null;
 let activeCode = null;   // { code, remaining }
-let selectedModel = 'gpt-image-2';   // 当前选用模型（由快捷功能或默认决定）
+let selectedModel = 'gpt-image-2-pro';   // 当前选用模型（由快捷功能或默认决定）
 
 const $ = (id) => document.getElementById(id);
 
@@ -278,7 +278,7 @@ function updateModelHint() {
   $('toolModelHint').textContent = '当前模型：' + (MODEL_NAMES[selectedModel] || selectedModel);
 }
 function resetModel() {
-  selectedModel = 'gpt-image-2';
+  selectedModel = 'gpt-image-2-pro';
   document.querySelectorAll('.tool').forEach((el) => el.classList.remove('active'));
   updateModelHint();
 }
