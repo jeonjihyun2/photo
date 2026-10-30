@@ -226,9 +226,29 @@ const TOOLS = [
     prompt: `Based on this portrait photo, create an elegant "Seasonal Color Personality Analysis" card (Spring / Summer / Autumn / Winter personal color type). Keep the person's real facial features, face shape and skin tone — do not over-retouch, do not swap the face. Show: 1) a ranked fit for the four seasons, 2) an overall verdict, 3) the recommended color range / palette, 4) temperament keywords. Clean, high-end, professional stylist-report and magazine layout. Visual-first, very short text labels only, written in Chinese. Vertical 4:5 ratio, high resolution, small text and thumbnails stay sharp.`,
   },
   {
-    id: 'color', label: '色彩分析', desc: '服装颜色上身 · 推荐/避免',
+    id: 'color', label: '色彩分析', desc: '季节型诊断 · 三排试色 · 配色穿搭报告',
     model: 'gpt-image-2-pro', size: '1024x1536',
-    prompt: `Based on this portrait photo, create a high-end "Personal Color Analysis" card. Keep the person's real facial features, skin tone and face shape — do not over-retouch, do not swap the face. Show the same person wearing different clothing colors side by side, clearly grouped into recommended colors vs colors to avoid, so it is obvious which colors flatter the skin and lift the complexion. Clean, fashionable, professional stylist-report layout. Visual-first, only short Chinese labels (推荐 / 普通 / 避免), no long text. Vertical 4:5 ratio, high resolution, suitable for social media.`,
+    prompt: `Based on this portrait photo, generate one comprehensive high-end "个人色彩分析报告" (Personal Color Analysis Report) infographic, vertical 1024x1536, warm cream and beige professional stylist-report background, clean magazine grid made of bordered rounded cards, balanced white space, crisp typography; all small text and every thumbnail must stay sharp and legible. Keep the same person's real face, facial features, face shape and skin tone exactly recognizable — do not over-retouch, do not swap or alter the face; every try-on portrait must show this exact same person. Lay out these sections top to bottom in this order:
+
+1) Header: main title "个人色彩分析报告" with a short subtitle line; place the original portrait on the left.
+
+2) 个人色彩诊断 card: determine the season type (Spring / Summer / Autumn / Winter combined with 深/浅, 暖/冷, 清/浊, for example "暖秋偏深型 · Deep Warm Autumn"), plus two short style tags; list 个人特征 with six one-line phrases: 肤色, 明度, 冷暖感, 对比度, 质感, 气质; render four horizontal scale bars labeled 色温(暖—冷), 明度(浅—深), 纯度(柔和—鲜艳), 对比度(低—高), each with a marker on the fitting position.
+
+3) 上身试色对比 card with three rows, each row showing the same person wearing colored tops in a grid, labeled below with Chinese color names:
+   A. 最适合(显白·提气色) — 8 portraits in flattering colors, green check mark badge;
+   B. 普通(可尝试) — 8 portraits in neutral colors, minus badge;
+   C. 不适合(显暗沉·显疲惫) — 8 portraits in dulling colors, red cross badge;
+   on the right side of each row add one short note explaining the effect on skin tone and complexion.
+
+4) 最佳配色盘 card: three grouped rows of named color swatches — 中性色, 点缀色, 避雷色; label every swatch below with its Chinese color name.
+
+5) 测试维度 card: four side-by-side VS pairs — 冷暖测试, 明度测试, 清浊测试, 对比度测试; each pair shows two portraits of the same person (warm vs cool, dark vs light, muted vs bright, high vs low contrast) with a "VS" between, and one short check-mark conclusion underneath, such as "暖色更衬肤色".
+
+6) 穿搭与配饰建议 card: short bullet recommendations for 服装, 面料 (show fabric swatches 棉麻/羊毛/真丝/针织), 配饰 (metal jewelry tone), 避免的颜色与风格, 风格关键词; add a row of 适合发色 swatches; brief 妆容建议 for 底妆/眼妆/腮红/口红 each paired with a small color swatch.
+
+7) Bottom row: four 日常穿搭示范 scenes — 日常通勤, 优雅约会, 休闲时尚, 正式场合; each shows one complete outfit on the same person above a small swatch strip; end the report with a one-line warm tip in the footer.
+
+All labels and text in Chinese, short phrases only, no long paragraphs; keep a consistent soft premium palette across the whole report, high resolution.`,
   },
   {
     id: 'makeup', label: '妆容分析', desc: '眉眼鼻唇 · 妆感方向',
