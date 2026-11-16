@@ -104,9 +104,6 @@
   .modal .close-row .btn { flex: 1; }
   .tiny { font-size: 12px; color: var(--muted); margin-top: 6px; }
   code { background: #eef1f5; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
-  .redeem-row { display: flex; gap: 10px; }
-  .redeem-row input { flex: 1; }
-  #redeemStatus { font-size: 13px; margin-top: 8px; color: var(--muted); }
 </style>
 </head>
 <body data-page-node-id="urFrNuBXEIIoCpC0HUhSlT">
@@ -114,16 +111,6 @@
   <header data-page-node-id="iXvjRctgrCbLlPICtFm7Cf">
     <div class="logo" data-page-node-id="7fZr2oWaaCpmrEk0ZbVQE1"><span class="dot" data-page-node-id="V2rC0uW5kLFNGW96zdny4s"></span>AI 图片工坊</div>
   </header>
-
-  <!-- 兑换码 -->
-  <div class="card" id="redeemCard">
-    <h2>兑换码</h2>
-    <div class="redeem-row">
-      <input type="text" id="redeemCode" placeholder="请输入兑换码，例如 ABCD-EFGH-JKLM" autocomplete="off">
-      <button class="btn btn-primary" id="btnRedeem">激活</button>
-    </div>
-    <div id="redeemStatus">未激活 · 请输入兑换码</div>
-  </div>
 
   <div class="tabs" data-page-node-id="6FajxkbgYZBFKQvpbAvqyu">
     <button class="tab active" data-mode="edit" data-page-node-id="AVoTKGpqDs0RKoFu1Kbteb">图生图 · 改图</button>
@@ -271,7 +258,6 @@ const MODEL_NAMES = {
 
 let currentMode = 'edit';
 let currentFile = null;
-let activeCode = null;   // { code, remaining }
 let selectedModel = 'gpt-image-2-pro';   // 当前选用模型（由快捷功能或默认决定）
 
 const $ = (id) => document.getElementById(id);
@@ -335,39 +321,6 @@ function switchMode(mode) {
 
 function setStatus(msg) { $('status').textContent = msg; }
 
-// ===== 兑换码 =====
-const codeKey = 'mugua_active_code';
-function loadActiveCode() { try { return JSON.parse(localStorage.getItem(codeKey)) || null; } catch { return null; } }
-function saveActiveCode(c) { localStorage.setItem(codeKey, JSON.stringify(c)); }
-
-function updateRedeemUI() {
-  const el = $('redeemStatus');
-  if (activeCode && activeCode.code) {
-    if (activeCode.remaining > 0) {
-      el.textContent = `已激活：${activeCode.code} · 剩余 ${activeCode.remaining} 次`;
-      el.style.color = 'var(--teal)';
-    } else {
-      el.textContent = `${activeCode.code} 额度已用完，请购买新兑换码`;
-      el.style.color = 'var(--danger)';
-    }
-  } else {
-    el.textContent = '未激活 · 请输入兑换码（购买服务后获得）';
-    el.style.color = 'var(--muted)';
-  }
-}
-
-async function queryCode(code) {
-  const res = await fetch('/api/redeem', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  });
-  const text = await res.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
-  if (!res.ok) throw new Error(data.error || '激活失败');
-  return data;
-}
-
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -386,8 +339,6 @@ function dataUrlFromResult(item) {
 async function doGenerate() {
   const prompt = $('prompt').value.trim();
   if (!prompt) { setError('请填写描述。'); return; }
-  if (!activeCode || !activeCode.code) { setError('请先输入兑换码并激活，才能生成图片。'); $('redeemCode').focus(); return; }
-  if (activeCode.remaining <= 0) { setError('兑换码额度已用完，请购买新的兑换码。'); return; }
 
   setError(null);
   setStatus('生成中…');
@@ -400,7 +351,6 @@ async function doGenerate() {
       const fd = new FormData();
       fd.append('image', currentFile);
       fd.append('prompt', prompt);
-      fd.append('code', activeCode.code);
       fd.append('model', selectedModel);
       fd.append('size', $('size').value);
       fd.append('quality', $('quality').value);
@@ -411,7 +361,7 @@ async function doGenerate() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt, code: activeCode.code, model: selectedModel,
+          prompt, model: selectedModel,
           size: $('size').value, quality: $('quality').value,
         }),
       });
@@ -432,11 +382,6 @@ async function doGenerate() {
     $('resultImg').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     $('resultImg').dataset.src = url;
 
-    if (typeof data.remaining === 'number') {
-      activeCode.remaining = data.remaining;
-      saveActiveCode(activeCode);
-      updateRedeemUI();
-    }
   } catch (e) {
     setError(e.message);
   } finally {
@@ -486,62 +431,11 @@ $('btnDownload').onclick = downloadResult;
 $('btnAgain').onclick = () => $('resultCard').scrollIntoView({ behavior: 'smooth' });
 document.querySelectorAll('.tab').forEach((t) => t.onclick = () => switchMode(t.dataset.mode));
 
-// 兑换码激活
-$('btnRedeem').onclick = async () => {
-  const code = $('redeemCode').value.trim();
-  if (!code) { setError('请输入兑换码。'); return; }
-  setError(null);
-  try {
-    const info = await queryCode(code);
-    activeCode = { code: info.code, remaining: info.remaining };
-    saveActiveCode(activeCode);
-    $('redeemCode').value = '';
-    updateRedeemUI();
-  } catch (e) { setError(e.message); }
-};
-
-// ===== 链接直达：?code=XXXX-XXXX-XXXX 自动激活，客户无需手动输码 =====
-function getCodeFromUrl() {
-  try {
-    const p = new URLSearchParams(location.search);
-    return (p.get('code') || '').trim();
-  } catch { return ''; }
-}
-
-async function activateFromUrl() {
-  const code = getCodeFromUrl();
-  if (!code) return false;
-  $('redeemCode').value = code;
-  try {
-    const info = await queryCode(code);
-    activeCode = { code: info.code, remaining: info.remaining };
-    saveActiveCode(activeCode);
-    $('redeemCode').value = '';
-    updateRedeemUI();
-    return true;
-  } catch (e) {
-    setError('链接中的兑换码无效：' + e.message);
-    return false;
-  }
-}
-
 // init
 renderChips();
 renderTools();
 switchMode('edit');
 updateModelHint();
-activeCode = loadActiveCode();
-updateRedeemUI();
-const urlCode = getCodeFromUrl();
-if (urlCode) {
-  activateFromUrl();   // 链接直达优先：自动激活 URL 里的码
-} else if (activeCode && activeCode.code) {
-  queryCode(activeCode.code).then((info) => {
-    activeCode.remaining = info.remaining;
-    saveActiveCode(activeCode);
-    updateRedeemUI();
-  }).catch(() => { /* 码失效时保持原显示 */ });
-}
 </script>
 </body>
 </html>
