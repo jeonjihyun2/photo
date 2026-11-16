@@ -28,7 +28,7 @@
   const PAPER_HI = '#FBF7E9';
   const INK = '#3A342C';
   const MUTED = '#6E6455';
-  const PMBLUE = '#40558A';
+  const PMBLUE = '#35486F';
 
   /* ---------------- 风格 ---------------- */
   const STYLES = [
@@ -177,7 +177,7 @@
     ctx.rotate(-0.14);
     ctx.strokeStyle = PMBLUE;
     ctx.fillStyle = PMBLUE;
-    ctx.globalAlpha = 0.60;
+    ctx.globalAlpha = 0.70;
 
     ctx.lineWidth = 4.5;
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
@@ -325,13 +325,14 @@
     // 4) 标题 + 5) 邮戳
     const place = ($('pcPlace') && $('pcPlace').value.trim()) || '';
     const date = ($('pcDate') && $('pcDate').value.trim()) || '';
+    const title = ($('pcTitle') && $('pcTitle').value.trim()) || '';
 
-    if (place) {
+    if (title) {
       ctx.save();
       ctx.fillStyle = INK;
       ctx.font = typeFont(40);
       ctx.globalAlpha = 0.92;
-      spaced(ctx, place, TITLE_X - 2, TITLE_Y, 3.4);
+      spaced(ctx, title, TITLE_X - 2, TITLE_Y, 3.4);
       ctx.restore();
     }
 
@@ -487,7 +488,7 @@
     $('pcDownloadHalf').onclick = () => state.cardCanvas && download(state.cardCanvas, 'postcard-front.png');
     $('pcRegen').onclick = generate;
 
-    ['pcPlace', 'pcDate'].forEach((id) => {
+    ['pcTitle', 'pcPlace', 'pcDate'].forEach((id) => {
       const el = $(id);
       if (el) el.addEventListener('input', () => { if (state.photo) render(); });
     });
