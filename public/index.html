@@ -104,6 +104,8 @@
   .modal .close-row .btn { flex: 1; }
   .tiny { font-size: 12px; color: var(--muted); margin-top: 6px; }
   code { background: #eef1f5; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+  .pc-chip-desc { display:block; font-size:11px; color:#8a8f99; margin-top:2px; font-weight:400; }
+  .chip.pc-chip-active { border-color: var(--brand); background:#f0f5ff; color: var(--brand); }
 </style>
 </head>
 <body data-page-node-id="urFrNuBXEIIoCpC0HUhSlT">
@@ -115,6 +117,7 @@
   <div class="tabs" data-page-node-id="6FajxkbgYZBFKQvpbAvqyu">
     <button class="tab active" data-mode="edit" data-page-node-id="AVoTKGpqDs0RKoFu1Kbteb">图生图 · 改图</button>
     <button class="tab" data-mode="generate" data-page-node-id="Ez4GjZPXfEcAl48SgB5QtA">文生图</button>
+    <button class="tab" data-mode="postcard">旅行明信片</button>
   </div>
 
   <!-- 图生图 -->
@@ -138,12 +141,58 @@
     <div class="model-hint" id="toolModelHint">当前模型：gpt-image-2-pro（Pro）</div>
   </div>
 
+  <!-- 旅行明信片 -->
+  <div id="panelPostcard" class="card" style="display:none">
+    <h2>上传旅行照片，生成一张艺术明信片</h2>
+    <div class="drop" id="pcDrop">
+      <div class="big">点击上传 或 拖拽旅行照片到这里</div>
+      <div class="sub">支持 JPG / PNG / WebP，最大 25MB · 风景、街景、人像都可以</div>
+    </div>
+    <input type="file" id="pcFile" accept="image/*" hidden>
+    <div class="preview" id="pcPreviewWrap" style="display:none">
+      <img id="pcPreviewImg" alt="原片预览">
+      <div class="hint" id="pcPreviewHint"></div>
+    </div>
+
+    <label>明信片风格</label>
+    <div class="chips" id="pcStyles"></div>
+
+    <div class="row">
+      <div>
+        <label>地点（选填）</label>
+        <input type="text" id="pcPlace" placeholder="例如：Santorini / 大理洱海" autocomplete="off">
+      </div>
+      <div>
+        <label>日期（选填）</label>
+        <input type="text" id="pcDate" placeholder="例如：2025.06" autocomplete="off">
+      </div>
+    </div>
+    <div class="tiny">留空就不会印地点和日期，也不会替你编造。</div>
+
+    <div class="actions">
+      <button class="btn-primary" id="pcGo">生成明信片</button>
+      <span class="status" id="pcStatus"></span>
+    </div>
+    <div class="error" id="pcError" style="display:none"></div>
+  </div>
+
+  <div class="card result" id="pcResultCard" style="display:none">
+    <h2 style="text-align:left">明信片预览 <span style="font-weight:400;color:var(--muted);font-size:13px">· 3:4 · 1536×2048</span></h2>
+    <img id="pcResultImg" alt="明信片">
+    <div class="meta">上半部分是你的原片，下半部分是 AI 插画 + 程序排版</div>
+    <div class="btns">
+      <button class="btn btn-primary" id="pcDownloadAll">下载整张明信片</button>
+      <button class="btn" id="pcDownloadHalf">只下载下方明信片</button>
+      <button class="btn" id="pcRegen">重新生成插画</button>
+    </div>
+  </div>
+
   <!-- 文生图 -->
   <div id="panelGenerate" class="card" style="display:none" data-page-node-id="x8B5KjImqFPpCgsqtEvBvT">
     <h2 data-page-node-id="avGLwq3BNwcTsPFzFqFpPH">用一句话描述你想生成的图片</h2>
   </div>
 
-  <div class="card" data-page-node-id="WgEErsVXHHueHp8RuiqouS">
+  <div class="card" id="cardPrompt" data-page-node-id="WgEErsVXHHueHp8RuiqouS">
     <div class="chips" id="chips" data-page-node-id="VzAWEAAjavDUGJYj9aSDD4"></div>
     <label data-page-node-id="eWOdAJ6cHIyYVA6CiQjbam">修改 / 生成描述</label>
     <textarea id="prompt" placeholder="例如：把背景换成纯白色摄影棚，保留人物主体，提高清晰度…"></textarea>
@@ -313,6 +362,10 @@ function switchMode(mode) {
   $('panelEdit').style.display = mode === 'edit' ? '' : 'none';
   $('toolCard').style.display = mode === 'edit' ? '' : 'none';
   $('panelGenerate').style.display = mode === 'generate' ? '' : 'none';
+  const pcPanel = $('panelPostcard');
+  if (pcPanel) pcPanel.style.display = mode === 'postcard' ? '' : 'none';
+  const promptCard = $('cardPrompt');
+  if (promptCard) promptCard.style.display = mode === 'postcard' ? 'none' : '';
   $('btnGo').textContent = mode === 'edit' ? '开始改图' : '开始生成';
   $('prompt').placeholder = mode === 'edit'
     ? '例如：把背景换成纯白色摄影棚，保留人物主体…'
@@ -437,5 +490,6 @@ renderTools();
 switchMode('edit');
 updateModelHint();
 </script>
+<script src="/postcard.js"></script>
 </body>
 </html>
