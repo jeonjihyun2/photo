@@ -31,7 +31,7 @@
       desc: '温柔治愈 · 旅行感',
       paper: '#FBF7EF',
       accent: '#8C9A86',
-      prompt: `Convert this photograph into a hand-painted Japanese vintage travel postcard illustration: soft transparent watercolour on textured cotton paper. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, mountains, coastline, streets, boats and trees, with the same spatial relationships. Anyone who knows this place must instantly recognise it. Simplify details into gentle watercolour washes, light ink accents only where they help. Muted palette limited to 2 to 4 colours: cream white, warm ivory, misty blue, sage green, warm sand. Calm, nostalgic, sunny travel mood, generous breathing space. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO postmark, NO paper mock-up — illustration only, all typography and paper texture are added later by the layout program.`
+      prompt: `Convert this photograph into a hand-painted Japanese vintage travel postcard illustration: soft transparent watercolour on textured cotton paper. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, mountains, coastline, streets, boats and trees, with the same spatial relationships. Anyone who knows this place must instantly recognise it. Simplify details into gentle watercolour washes, light ink accents only where they help. Muted palette limited to 2 to 4 colours: cream white, warm ivory, misty blue, sage green, warm sand. Calm, nostalgic, sunny travel mood, generous breathing space. Wide landscape composition matching the original framing. Keep the photograph's own colour mood and lighting: a warm sunset must stay warm and luminous, never faded, overexposed or desaturated. Keep clear value separation between sky, sea and buildings, medium-strong pigment with layered washes and a few crisp edges. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO postmark, NO paper mock-up — illustration only, all typography and paper texture are added later by the layout program.`
     },
     {
       id: 'minimal',
@@ -39,7 +39,7 @@
       desc: '留白干净 · 艺术感',
       paper: '#FCFBF7',
       accent: '#9AA0A6',
-      prompt: `Convert this photograph into a minimal hand-drawn travel illustration in the style of a modern independent travel magazine: fine ink line work, flat very light colour washes, plenty of clean white space, calm editorial composition. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings and landscape elements, same spatial arrangement, instantly recognisable. Restrained palette of 2 to 3 colours: off-white, warm grey, plus one soft accent such as sage or dusty blue. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper texture, NO mock-up — illustration only.`
+      prompt: `Convert this photograph into a minimal hand-drawn travel illustration in the style of a modern independent travel magazine: fine ink line work, flat very light colour washes, plenty of clean white space, calm editorial composition. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings and landscape elements, same spatial arrangement, instantly recognisable. Restrained palette of 2 to 3 colours: off-white, warm grey, plus one soft accent such as sage or dusty blue, but preserve the photograph's colour relationships and value structure: do not flatten everything into pale grey, keep one clear focal point and readable contrast. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper texture, NO mock-up — illustration only.`
     },
     {
       id: 'retro',
@@ -47,7 +47,7 @@
       desc: '怀旧收藏 · 杂志感',
       paper: '#F7F0E1',
       accent: '#B0663F',
-      prompt: `Convert this photograph into a vintage screen-printed travel poster illustration, mid-century retro print style: simplified bold flat shapes, limited flat shading, slight ink misregistration and subtle print grain, warm nostalgic feeling. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, coast, mountains and boats, same spatial arrangement, instantly recognisable. Limited palette of 3 to 4 colours: cream paper tone, deep teal or terracotta red, warm sand, dark ink. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper mock-up — pure illustration only.`
+      prompt: `Convert this photograph into a vintage screen-printed travel poster illustration, mid-century retro print style: simplified bold flat shapes, limited flat shading, slight ink misregistration and subtle print grain, warm nostalgic feeling. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, coast, mountains and boats, same spatial arrangement, instantly recognisable. Limited palette of 3 to 4 colours: cream paper tone, deep teal or terracotta red, warm sand, dark ink. Carry over the photograph's light direction and colour mood - a golden sunset must still read as golden - with strong flat contrast and solid ink coverage. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper mock-up — pure illustration only.`
     }
   ];
 
@@ -326,7 +326,7 @@
         $('pcPreviewHint').textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB · ${state.photo.naturalWidth}×${state.photo.naturalHeight}`;
         $('pcPreviewWrap').style.display = '';
         render();   // 先显示占位版式，让用户看到构图
-      } catch (e) { err('图片读取失败：' + (e && e.message ? e.message : e)); console.error(e); }
+      } catch (e) { err('这张图打不开（文件可能已损坏），换一张 JPG / PNG 试试。'); console.error(e); }
     };
     reader.readAsDataURL(file);
   }
