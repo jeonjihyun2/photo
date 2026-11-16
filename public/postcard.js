@@ -11,9 +11,9 @@
   const W = 1536;
   const H = 2048;
 
-  const TOP_H = 1064;                 // 上半原片区域
-  const CARD_TOP = 1040;              // 撕边位置（略微压住原片）
-  const ART_PAD = 10;                 // 撕边下方留一条纸边
+  const TOP_H = 1024;                 // 上半原片区域（正好 3:2，常见横构图零留白）
+  const CARD_TOP = 1002;              // 撕边位置（压住原片 22px，吃掉落白）
+  const ART_PAD = 8;                  // 撕边下方留一条纸边
   const BAND_H = 140;                 // 底部文字纸带
 
   const INK = '#26221E';
@@ -121,7 +121,7 @@
     const edge = [];
     for (let i = 0; i <= steps; i++) {
       const x = (W / steps) * i;
-      const y = CARD_TOP + Math.sin(i * 1.45) * 4 + Math.sin(i * 0.33 + 1) * 8;
+      const y = CARD_TOP + Math.sin(i * 1.38) * 5 + Math.sin(i * 0.31 + 1) * 11 + Math.sin(i * 2.7) * 2;
       edge.push([x, y]);
     }
 
