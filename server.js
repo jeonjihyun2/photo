@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -66,98 +65,12 @@ function fetchWithTimeout(url, options, ms = 180000) {
     .finally(() => clearTimeout(timer));
 }
 
-// ===== 兑换码（额度）系统 =====
-const DATA_DIR = path.join(__dirname, 'data');
-const CODES_FILE = path.join(DATA_DIR, 'codes.json');
-
-// 兑换码存储：优先用文件（本地 / Render 有持久磁盘）；Vercel 等 serverless 环境文件系统只读、
-// 冷启动会重置，此时自动降级为「内存 + 环境变量种子码」。扣次在 serverless 下仅本次实例生命周期内有效。
-let MEM_CODES = null;
-
-function buildSeedCodes() {
-  const seed = (process.env.MUGUA_SEED_CODES || '').trim();
-  const codes = {};
-  if (!seed) return codes;
-  seed.split(',').forEach((item) => {
-    const eq = item.indexOf('=');
-    if (eq <= 0) return;
-    const code = normCode(item.slice(0, eq));
-    const total = parseInt(item.slice(eq + 1), 10);
-    if (code && total > 0) {
-      codes[code] = { total, used: 0, createdAt: new Date().toISOString(), note: 'seed' };
-    }
-  });
-  return codes;
-}
-
-function loadCodes() {
-  if (MEM_CODES) return MEM_CODES;
-  try {
-    if (fs.existsSync(CODES_FILE)) {
-      return JSON.parse(fs.readFileSync(CODES_FILE, 'utf8')).codes || {};
-    }
-  } catch (e) {
-    console.log('[codes] 文件读取失败:', e.message);
-  }
-  MEM_CODES = buildSeedCodes();
-  if (Object.keys(MEM_CODES).length) {
-    console.log(`[codes] 无码文件，已从 MUGUA_SEED_CODES 初始化 ${Object.keys(MEM_CODES).length} 个码（内存态）`);
-  }
-  return MEM_CODES;
-}
-
-function saveCodes(codes) {
-  MEM_CODES = codes; // 总是同步内存态
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    const tmp = CODES_FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify({ codes }, null, 2));
-    fs.renameSync(tmp, CODES_FILE);
-  } catch (e) {
-    // serverless 只读文件系统：写失败则仅保留内存态（重启/冷启动后扣次重置）
-    console.log('[codes] 文件写入失败（已改用内存态）:', e.message);
-  }
-}
-function normCode(c) { return (c || '').trim().toUpperCase(); }
-// 校验兑换码：返回 { code, ok, error?, total, used, remaining }
-function checkCode(code) {
-  const c = normCode(code);
-  if (!c) return { code: c, ok: false, error: '请输入兑换码。' };
-  const codes = loadCodes();
-  const info = codes[c];
-  if (!info) return { code: c, ok: false, error: '兑换码不存在，请核对后重试。' };
-  const remaining = (info.total || 0) - (info.used || 0);
-  if (remaining <= 0) {
-    return { code: c, ok: false, error: '兑换码额度已用完，请购买新的兑换码。', total: info.total, used: info.used, remaining: 0 };
-  }
-  return { code: c, ok: true, total: info.total, used: info.used || 0, remaining };
-}
-// 成功生成一次后扣减，返回剩余次数
-function consumeCode(code) {
-  const c = normCode(code);
-  const codes = loadCodes();
-  const info = codes[c];
-  if (!info) return null;
-  info.used = (info.used || 0) + 1;
-  saveCodes(codes);
-  return (info.total || 0) - (info.used || 0);
-}
-
-const NO_BASE = '接口地址无效。请在右上角「API 设置」填写木瓜 API 的完整网址（带 https:// 和域名），例如 https://api.mooko.ai，不要只填 /v1。';
-const NO_KEY = '请填写 API Key（在木瓜后台「令牌」里新建）。';
-
-// 查询 / 激活兑换码
-app.post('/api/redeem', (req, res) => {
-  const r = checkCode(req.body && req.body.code);
-  if (!r.ok) return res.status(400).json({ error: r.error });
-  res.json({ ok: true, code: r.code, total: r.total, used: r.used, remaining: r.remaining });
-});
+const NO_BASE = '生图服务暂不可用（服务器未配置接口地址），请稍后再试或联系管理员。';
+const NO_KEY = '生图服务暂不可用（服务器未配置密钥），请稍后再试或联系管理员。';
 
 // 图生图 / 编辑 —— 走 /images/edits（multipart）
 app.post('/api/edit', upload.single('image'), async (req, res) => {
   try {
-    const gate = checkCode(req.body.code);
-    if (!gate.ok) return res.status(403).json({ error: gate.error });
     const { baseUrl, apiKey, model } = getConfig(req.body);
     if (!baseUrl) return res.status(400).json({ error: NO_BASE });
     if (!apiKey) return res.status(400).json({ error: NO_KEY });
@@ -190,8 +103,7 @@ app.post('/api/edit', upload.single('image'), async (req, res) => {
       console.log(`[edit] 上游错误 ${r.status}: ${text.slice(0, 200)}`);
       return res.status(r.status).json({ error: extractError(data) || `上游返回 ${r.status}` });
     }
-    const remaining = consumeCode(req.body.code);
-    res.json({ ...data, remaining });
+    res.json(data);
   } catch (e) {
     console.log('[edit] 异常:', e.message);
     const msg = e.name === 'AbortError' ? '请求超时（生成时间过长），请降低画质或换小图重试。' : ('服务异常：' + e.message);
@@ -202,8 +114,6 @@ app.post('/api/edit', upload.single('image'), async (req, res) => {
 // 文生图 —— 走 /images/generations（JSON）
 app.post('/api/generate', async (req, res) => {
   try {
-    const gate = checkCode(req.body.code);
-    if (!gate.ok) return res.status(403).json({ error: gate.error });
     const { baseUrl, apiKey, model } = getConfig(req.body);
     if (!baseUrl) return res.status(400).json({ error: NO_BASE });
     if (!apiKey) return res.status(400).json({ error: NO_KEY });
@@ -233,8 +143,7 @@ app.post('/api/generate', async (req, res) => {
       console.log(`[generate] 上游错误 ${r.status}: ${text.slice(0, 200)}`);
       return res.status(r.status).json({ error: extractError(data) || `上游返回 ${r.status}` });
     }
-    const remaining = consumeCode(req.body.code);
-    res.json({ ...data, remaining });
+    res.json(data);
   } catch (e) {
     console.log('[generate] 异常:', e.message);
     const msg = e.name === 'AbortError' ? '请求超时（生成时间过长），请降低画质或换小图重试。' : ('服务异常：' + e.message);
