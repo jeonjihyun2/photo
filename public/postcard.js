@@ -1,56 +1,65 @@
 /* ============================================================
- * 旅行明信片模块（v1）
- * 设计原则：
- *   1. 上半部分 = 用户原片，程序直接绘制，不经过 AI，绝不改人脸/建筑
- *   2. 下半部分 = AI 只生成「插画」，禁止出现文字、邮戳、边框
- *   3. 纸张、撕边、邮戳、地点/日期文字、排版 全部由 canvas 程序绘制
+ * 旅行明信片模块 v3
+ * 参考版式：上半原片满幅 + 手撕纸边 + 打字机标题 + 蓝色邮戳
+ *          + 丝网印（riso）插画 + 底部「地点 • PLACE / 日期 • DATE」
+ * 原则：原片程序绘制不重绘；AI 只出插画；文字/邮戳/排版全由 canvas 完成
  * ============================================================ */
 (() => {
   'use strict';
 
+  /* ---------------- 版式常量 ---------------- */
   const W = 1536;
   const H = 2048;
 
-  const TOP_H = 1024;                 // 上半原片区域（正好 3:2，常见横构图零留白）
-  const CARD_TOP = 1002;              // 撕边位置（压住原片 22px，吃掉落白）
-  const ART_PAD = 8;                  // 撕边下方留一条纸边
-  const BAND_H = 140;                 // 底部文字纸带
+  const PHOTO_H = 940;              // 上半原片区
+  const TEAR = 940;                 // 撕纸边位置
+  const TITLE_X = 210;
+  const TITLE_Y = 1054;
+  const IW = 1130;                  // 插画宽（3:2）
+  const IH = 753;
+  const IX = (W - IW) / 2;
+  const IY = 1130;
+  const BOTTOM_Y = 1952;
+  const PM_CX = 1352;
+  const PM_CY = 1036;
+  const PM_R = 142;
 
-  const INK = '#26221E';
-  const MUT = '#7B7268';
+  const PAPER = '#F2EBD6';
+  const PAPER_HI = '#FBF7E9';
+  const INK = '#3A342C';
+  const MUTED = '#6E6455';
+  const PMBLUE = '#40558A';
 
+  /* ---------------- 风格 ---------------- */
   const STYLES = [
+    {
+      id: 'riso',
+      name: '复古丝印',
+      desc: '网上案例同款',
+      paper: '#F2EBD6',
+      prompt: `Convert this photograph into a vintage risograph screen-print travel illustration: flat posterised colour blocks, limited three-ink palette of dusty slate blue, warm cream and terracotta red with a deep ink accent, visible ink grain, tiny speckles and slight misregistration, rough printed edges, simplified bold shapes, no soft gradients, editorial poster feel. Keep exactly the same scene: the same main subject, the same landmark (bridge, church, building, mountain), the same boats, trees and city skyline, the same spatial arrangement and perspective, so anyone who knows this place recognises it instantly. Composition: wide landscape, main subject centred with a little headroom, horizon roughly in the middle. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO postmark, NO paper mock-up, NO mock-up shadow - pure printed illustration only.`
+    },
     {
       id: 'watercolor',
       name: '日系水彩',
-      desc: '温柔治愈 · 旅行感',
-      paper: '#FBF7EF',
-      accent: '#8C9A86',
-      prompt: `Convert this photograph into a hand-painted Japanese vintage travel postcard illustration: soft transparent watercolour on textured cotton paper. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, mountains, coastline, streets, boats and trees, with the same spatial relationships. Anyone who knows this place must instantly recognise it. Simplify details into gentle watercolour washes, light ink accents only where they help. Muted palette limited to 2 to 4 colours: cream white, warm ivory, misty blue, sage green, warm sand. Calm, nostalgic, sunny travel mood, generous breathing space. Wide landscape composition matching the original framing. Keep the photograph's own colour mood and lighting: a warm sunset must stay warm and luminous, never faded, overexposed or desaturated. Keep clear value separation between sky, sea and buildings, medium-strong pigment with layered washes and a few crisp edges. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO postmark, NO paper mock-up — illustration only, all typography and paper texture are added later by the layout program.`
+      desc: '温柔治愈',
+      paper: '#F5EFDF',
+      prompt: `Convert this photograph into a hand-painted Japanese travel postcard illustration: soft transparent watercolour on textured cotton paper, gentle ink accents, clear pigment with visible brush edges. Keep exactly the same scene: the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, coastline, boats and trees, the same spatial arrangement, instantly recognisable. Muted palette of 3 to 4 colours: cream white, misty blue, sage green, warm sand. Keep the photograph's own colour mood and lighting: a warm sunset must stay warm and luminous, never faded or desaturated. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO postmark, NO paper mock-up - illustration only.`
     },
     {
       id: 'minimal',
-      name: '极简手绘',
-      desc: '留白干净 · 艺术感',
-      paper: '#FCFBF7',
-      accent: '#9AA0A6',
-      prompt: `Convert this photograph into a minimal hand-drawn travel illustration in the style of a modern independent travel magazine: fine ink line work, flat very light colour washes, plenty of clean white space, calm editorial composition. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings and landscape elements, same spatial arrangement, instantly recognisable. Restrained palette of 2 to 3 colours: off-white, warm grey, plus one soft accent such as sage or dusty blue, but preserve the photograph's colour relationships and value structure: do not flatten everything into pale grey, keep one clear focal point and readable contrast. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper texture, NO mock-up — illustration only.`
-    },
-    {
-      id: 'retro',
-      name: '复古票根',
-      desc: '怀旧收藏 · 杂志感',
-      paper: '#F7F0E1',
-      accent: '#B0663F',
-      prompt: `Convert this photograph into a vintage screen-printed travel poster illustration, mid-century retro print style: simplified bold flat shapes, limited flat shading, slight ink misregistration and subtle print grain, warm nostalgic feeling. Keep the same scene exactly — the same main subject, the same people with identical faces, pose and clothing, the same landmark buildings, coast, mountains and boats, same spatial arrangement, instantly recognisable. Limited palette of 3 to 4 colours: cream paper tone, deep teal or terracotta red, warm sand, dark ink. Carry over the photograph's light direction and colour mood - a golden sunset must still read as golden - with strong flat contrast and solid ink coverage. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper mock-up — pure illustration only.`
+      name: '极简线稿',
+      desc: '留白干净',
+      paper: '#FAF6EA',
+      prompt: `Convert this photograph into a minimal hand-drawn travel illustration: fine ink line work with flat light colour washes, generous clean space, modern independent travel magazine feel. Keep exactly the same scene: the same main subject, the same landmark buildings and landscape elements, the same spatial arrangement, instantly recognisable. Restrained palette of 2 to 3 colours: off-white, warm grey, one soft accent such as slate blue, but keep readable contrast and a clear focal point. Wide landscape composition matching the original framing. Strictly NO text, NO letters, NO numbers, NO logo, NO watermark, NO signature, NO border, NO frame, NO stamp, NO paper mock-up - illustration only.`
     }
   ];
 
   const state = {
     file: null,
-    photo: null,      // HTMLImageElement
-    illo: null,       // HTMLImageElement
-    styleId: 'watercolor',
+    photo: null,
+    illo: null,
+    styleId: 'riso',
     busy: false,
     fullCanvas: null,
     cardCanvas: null
@@ -58,7 +67,7 @@
 
   const $ = (id) => document.getElementById(id);
 
-  /* ---------- 小工具 ---------- */
+  /* ---------------- 工具 ---------------- */
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -76,11 +85,15 @@
     }
   }
 
+  function typeFont(size, weight) {
+    return `${weight || 400} ${size}px "American Typewriter", "Courier New", "Noto Serif", Georgia, monospace`;
+  }
+
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const im = new Image();
       im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error('图片加载失败'));
+      im.onerror = () => reject(new Error('load failed'));
       im.src = src;
     });
   }
@@ -90,11 +103,114 @@
     if (msg) { el.textContent = msg; el.style.display = 'block'; }
     else { el.style.display = 'none'; }
   }
-
   function status(msg) { $('pcStatus').textContent = msg || ''; }
 
-  /* ---------- 合成绘制 ---------- */
-  // xStart / yStart：导出局部时把绝对坐标平移
+  /* ---------------- 撕纸边轮廓（固定随机，保证两次导出一致） ---------------- */
+  function tearPoints() {
+    const rnd = mulberry32(20260311);
+    const N = 190;
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const x = (W / N) * i;
+      const y = TEAR
+        + Math.sin(i * 1.31) * 5.5
+        + Math.sin(i * 0.29 + 1.2) * 12
+        + Math.sin(i * 3.7 + 0.4) * 2.2
+        + (rnd() - 0.5) * 5;
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  /* ---------------- 粗边插画：把矩形图刷成“印上去”的墨块 ---------------- */
+  function roughIllo(img, w, h) {
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const c = off.getContext('2d');
+    c.drawImage(img, 0, 0, w, h);
+
+    c.globalCompositeOperation = 'source-atop';
+    c.fillStyle = 'rgba(243,236,220,0.10)';
+    c.fillRect(0, 0, w, h);
+
+    const rnd = mulberry32(918273);
+    c.globalCompositeOperation = 'destination-out';
+    const step = 3;
+    const amp = 9;
+
+    for (let x = 0; x < w; x += step) {
+      const wob = amp + Math.sin(x / 26) * 5 + rnd() * 9;
+      c.fillRect(x, 0, step + 1, Math.max(0, wob));
+    }
+    for (let x = 0; x < w; x += step) {
+      const wob = amp + Math.sin(x / 31 + 2) * 5 + rnd() * 9;
+      c.fillRect(x, h - Math.max(0, wob), step + 1, Math.max(0, wob));
+    }
+    for (let y = 0; y < h; y += step) {
+      const wob = amp + Math.sin(y / 23 + 1) * 4 + rnd() * 8;
+      c.fillRect(0, y, Math.max(0, wob), step + 1);
+    }
+    for (let y = 0; y < h; y += step) {
+      const wob = amp + Math.sin(y / 27 + 3) * 4 + rnd() * 8;
+      c.fillRect(w - Math.max(0, wob), y, Math.max(0, wob), step + 1);
+    }
+    for (let i = 0; i < 900; i++) {
+      const t = rnd();
+      const x = rnd() * w;
+      const y = (t < 0.5 ? rnd() * 26 : h - rnd() * 26);
+      c.fillRect(x, y, rnd() * 5 + 1, rnd() * 5 + 1);
+    }
+    return off;
+  }
+
+  /* ---------------- 邮戳 ---------------- */
+  function postmark(ctx, cx, cy, r, text) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.16);
+    ctx.strokeStyle = PMBLUE;
+    ctx.fillStyle = PMBLUE;
+    ctx.globalAlpha = 0.52;
+
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, 0, r - 17, 0, Math.PI * 2); ctx.stroke();
+
+    ctx.font = '600 15px "American Typewriter", "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('POSTAGE', 0, -r + 30);
+    ctx.save();
+    ctx.translate(0, r - 32);
+    ctx.rotate(Math.PI);
+    ctx.fillText('POST CARD', 0, 0);
+    ctx.restore();
+
+    const inner = text || 'POST';
+    const fs = inner.length > 9 ? 14 : (inner.length > 6 ? 17 : 22);
+    ctx.font = `500 ${fs}px "American Typewriter", "Courier New", monospace`;
+    ctx.fillText(inner, 0, 8);
+    ctx.font = '400 13px "American Typewriter", "Courier New", monospace';
+    ctx.fillText('········', 0, 30);
+    ctx.textAlign = 'left';
+
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 3;
+    for (let k = 0; k < 4; k++) {
+      const yy = -34 + k * 22;
+      ctx.beginPath();
+      const xEnd = W - cx + 120;
+      for (let x = r + 6; x <= xEnd; x += 2) {
+        const y = yy + Math.sin(x / 22) * 6;
+        if (x === r + 6) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------------- 合成绘制 ---------------- */
   function paint(canvas, yStart, opts) {
     const o = opts || {};
     const style = STYLES.find((s) => s.id === state.styleId) || STYLES[0];
@@ -103,163 +219,135 @@
     ctx.save();
     ctx.translate(0, -yStart);
 
-    // 底色
-    ctx.fillStyle = o.cardOnly ? style.paper : '#EFE7D8';
+    ctx.fillStyle = style.paper;
     ctx.fillRect(0, yStart, W, H - yStart);
 
-    // 1) 上半部分：原片，等比完整显示（不裁切、不拉伸）
+    // 1) 原片
     if (!o.cardOnly && state.photo) {
       const im = state.photo;
-      const sc = Math.min(W / im.naturalWidth, TOP_H / im.naturalHeight);
-      const dw = im.naturalWidth * sc;
-      const dh = im.naturalHeight * sc;
-      ctx.drawImage(im, (W - dw) / 2, (TOP_H - dh) / 2, dw, dh);
+      const cover = Math.max(W / im.naturalWidth, PHOTO_H / im.naturalHeight);
+      const dw = im.naturalWidth * cover;
+      const dh = im.naturalHeight * cover;
+      const cropFrac = 1 - Math.min(W / dw, PHOTO_H / dh);
+      if (cropFrac <= 0.22) {
+        ctx.drawImage(im, (W - dw) / 2, (PHOTO_H - dh) / 2, dw, dh);
+      } else {
+        const sc = Math.min(W / im.naturalWidth, PHOTO_H / im.naturalHeight);
+        const dw2 = im.naturalWidth * sc;
+        const dh2 = im.naturalHeight * sc;
+        ctx.fillStyle = style.paper;
+        ctx.fillRect(0, 0, W, PHOTO_H);
+        ctx.drawImage(im, (W - dw2) / 2, (PHOTO_H - dh2) / 2, dw2, dh2);
+      }
     }
 
-    // 2) 纸卡（下半），手撕纸边缘
-    const steps = 128;
-    const edge = [];
-    for (let i = 0; i <= steps; i++) {
-      const x = (W / steps) * i;
-      const y = CARD_TOP + Math.sin(i * 1.38) * 5 + Math.sin(i * 0.31 + 1) * 11 + Math.sin(i * 2.7) * 2;
-      edge.push([x, y]);
+    // 2) 撕纸（投影 + 主纸面 + 纸边高光）
+    const pts = tearPoints();
+    const paperPath = (dy) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1] + dy);
+      pts.forEach((p) => ctx.lineTo(p[0], p[1] + dy));
+      ctx.lineTo(W, H + 40);
+      ctx.lineTo(0, H + 40);
+      ctx.closePath();
+    };
+
+    if (!o.cardOnly) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(40,30,16,0.30)';
+      ctx.shadowBlur = 22;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = style.paper;
+      paperPath(0);
+      ctx.fill();
+      ctx.restore();
     }
 
-    // 3) 插画：满幅铺满下半张卡片
-    const artTop = CARD_TOP + ART_PAD;
-    const artH = H - artTop;
-    if (state.illo) {
-      const im = state.illo;
-      const sc = Math.max(W / im.naturalWidth, artH / im.naturalHeight);
-      const dw = im.naturalWidth * sc;
-      const dh = im.naturalHeight * sc;
-      ctx.drawImage(im, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
-    } else {
-      ctx.fillStyle = '#F3EADA';
-      ctx.fillRect(0, artTop, W, artH);
-      ctx.strokeStyle = 'rgba(38,34,30,0.18)';
-      ctx.setLineDash([12, 9]);
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(40.5, artTop + 40.5, W - 81, artH - 81);
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(90,80,64,0.8)';
-      ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('AI 插画 · 满幅', W / 2, artTop + artH / 2);
-      ctx.textAlign = 'left';
-    }
-
-    // 4) 撕边纸沿（盖在插画顶部，露出纸张厚度）
-    ctx.beginPath();
-    ctx.moveTo(0, edge[0][1]);
-    edge.forEach((pt) => ctx.lineTo(pt[0], pt[1]));
-    ctx.lineTo(W, artTop + 6);
-    ctx.lineTo(0, artTop + 6);
-    ctx.closePath();
-    ctx.save();
-    ctx.shadowColor = 'rgba(48,36,20,0.16)';
-    ctx.shadowBlur = o.cardOnly ? 0 : 16;
-    ctx.shadowOffsetY = 4;
     ctx.fillStyle = style.paper;
+    paperPath(0);
+    ctx.fill();
+
+    ctx.save();
+    ctx.fillStyle = PAPER_HI;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1] - 7);
+    pts.forEach((p) => ctx.lineTo(p[0], p[1] - 7));
+    pts.slice().reverse().forEach((p) => ctx.lineTo(p[0], p[1] + 2));
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // 5) 底部文字纸带
-    const bandTop = H - BAND_H;
-    ctx.fillStyle = style.paper;
-    ctx.fillRect(0, bandTop, W, BAND_H);
-    ctx.strokeStyle = 'rgba(38,34,30,0.14)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, bandTop + 0.5);
-    ctx.lineTo(W, bandTop + 0.5);
-    ctx.stroke();
-
-    // 纸张纤维颗粒（固定随机，整张/半张导出一致）
-    const rnd = mulberry32(20260116);
+    // 纸纹
+    const rnd = mulberry32(556677);
     ctx.save();
-    ctx.globalAlpha = 0.03;
+    ctx.globalAlpha = 0.035;
     ctx.fillStyle = '#6B5F4D';
-    for (let i = 0; i < 1800; i++) {
-      ctx.fillRect(rnd() * W, bandTop + 2 + rnd() * (BAND_H - 4), 1, 1);
+    for (let i = 0; i < 3600; i++) {
+      ctx.fillRect(rnd() * W, TEAR + rnd() * (H - TEAR), 1, 1);
     }
     ctx.restore();
 
+    // 3) 插画
+    if (state.illo) {
+      const rough = roughIllo(state.illo, IW, IH);
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(rough, IX, IY, IW, IH);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(58,52,44,0.18)';
+      ctx.setLineDash([14, 10]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(IX + .5, IY + .5, IW - 1, IH - 1);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(58,52,44,0.5)';
+      ctx.font = typeFont(24);
+      ctx.textAlign = 'center';
+      ctx.fillText('AI 插画将印在这里', W / 2, IY + IH / 2);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    // 4) 标题 + 5) 邮戳
     const place = ($('pcPlace') && $('pcPlace').value.trim()) || '';
     const date = ($('pcDate') && $('pcDate').value.trim()) || '';
-    const tx = 64;
 
-    if (place || date) {
-      ctx.fillStyle = MUT;
-      ctx.font = '600 13px "Helvetica Neue", Arial, sans-serif';
-      spaced(ctx, 'TRAVEL MOMENT', tx, bandTop + 40, 3);
-
-      if (place) {
-        ctx.fillStyle = INK;
-        ctx.font = '500 42px "Songti SC", "Noto Serif SC", Georgia, serif';
-        ctx.fillText(place, tx - 1, bandTop + 86);
-        if (date) {
-          ctx.fillStyle = MUT;
-          ctx.font = '400 21px "Helvetica Neue", Arial, sans-serif';
-          ctx.fillText(date, tx, bandTop + 118);
-        }
-      } else {
-        ctx.fillStyle = INK;
-        ctx.font = '500 30px "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText(date, tx, bandTop + 92);
-      }
+    if (place) {
+      ctx.save();
+      ctx.fillStyle = INK;
+      ctx.font = typeFont(40);
+      ctx.globalAlpha = 0.92;
+      spaced(ctx, place, TITLE_X - 2, TITLE_Y, 3.4);
+      ctx.restore();
     }
 
-    // 6) 邮戳
-    const pmCx = W - 96;
-    const pmCy = bandTop + BAND_H / 2 + 2;
-    ctx.strokeStyle = style.accent;
-    ctx.globalAlpha = 0.5;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(pmCx, pmCy, 48, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(pmCx, pmCy, 40, 0, Math.PI * 2); ctx.stroke();
+    postmark(ctx, PM_CX, PM_CY, PM_R, date);
 
+    // 6) 底部一行
     ctx.save();
-    ctx.fillStyle = style.accent;
-    ctx.globalAlpha = 0.7;
-    ctx.textAlign = 'center';
+    ctx.fillStyle = MUTED;
+    ctx.font = typeFont(34);
+    if (place) {
+      spaced(ctx, place, TITLE_X - 2, BOTTOM_Y, 2.4);
+      const w1 = ctx.measureText(place).width + 2.4 * place.length;
+      spaced(ctx, '• PLACE', TITLE_X - 2 + w1 + 16, BOTTOM_Y, 2.4);
+    }
     if (date) {
-      ctx.font = '400 15px "Helvetica Neue", Arial, sans-serif';
-      ctx.fillText(date, pmCx, pmCy + 5);
-    } else {
-      ctx.font = '600 12px "Helvetica Neue", Arial, sans-serif';
-      spacedCenter(ctx, 'POST', pmCx, pmCy + 4, 2);
-    }
-    ctx.textAlign = 'left';
-    ctx.restore();
-
-    // 波浪邮线
-    ctx.save();
-    ctx.globalAlpha = 0.4;
-    ctx.strokeStyle = style.accent;
-    ctx.lineWidth = 1.5;
-    for (let k = 0; k < 3; k++) {
-      const yy = pmCy - 12 + k * 12;
-      ctx.beginPath();
-      for (let x = pmCx - 190; x <= pmCx - 66; x += 2) {
-        const y = yy + Math.sin(x / 7) * 3;
-        if (x === pmCx - 190) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+      const s = `${date} • DATE`;
+      spacedRight(ctx, s, W - TITLE_X + 2, BOTTOM_Y, 2.4);
     }
     ctx.restore();
 
-    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  function spacedCenter(ctx, text, cx, y, sp) {
-    ctx.font = ctx.font;
+  function spacedRight(ctx, text, rightX, y, sp) {
     let total = 0;
     for (const ch of text) total += ctx.measureText(ch).width + sp;
     total -= sp;
-    spaced(ctx, text, cx - total / 2, y, sp);
+    spaced(ctx, text, rightX - total, y, sp);
   }
 
   function render() {
@@ -270,8 +358,8 @@
     state.fullCanvas = full;
 
     const card = document.createElement('canvas');
-    card.width = W; card.height = H - CARD_TOP;
-    paint(card, CARD_TOP, { cardOnly: true });
+    card.width = W; card.height = H - TEAR + 22;
+    paint(card, TEAR - 22, { cardOnly: true });
     state.cardCanvas = card;
 
     $('pcResultImg').src = full.toDataURL('image/png');
@@ -283,16 +371,13 @@
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }, 'image/png');
   }
 
-  /* ---------- 上传 ---------- */
+  /* ---------------- 上传 ---------------- */
   async function setFile(file) {
     if (!file) return;
     if (!file.type.startsWith('image/')) { err('请选择图片文件。'); return; }
@@ -308,13 +393,15 @@
         $('pcPreviewImg').src = reader.result;
         $('pcPreviewHint').textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB · ${state.photo.naturalWidth}×${state.photo.naturalHeight}`;
         $('pcPreviewWrap').style.display = '';
-        render();   // 先显示占位版式，让用户看到构图
-      } catch (e) { err('这张图打不开（文件可能已损坏），换一张 JPG / PNG 试试。'); console.error(e); }
+        render();
+      } catch (e) {
+        err('这张图打不开（文件可能已损坏），换一张 JPG / PNG 试试。');
+      }
     };
     reader.readAsDataURL(file);
   }
 
-  /* ---------- 生成 ---------- */
+  /* ---------------- 生成 ---------------- */
   async function generate() {
     if (state.busy) return;
     if (!state.file) { err('请先上传一张照片。'); return; }
@@ -323,7 +410,7 @@
     err(null);
     state.busy = true;
     $('pcGo').disabled = true;
-    status('AI 正在绘制明信片插画…（约 30–90 秒）');
+    status('AI 正在印制插画…（约 30–90 秒）');
 
     try {
       const fd = new FormData();
@@ -356,7 +443,7 @@
     }
   }
 
-  /* ---------- 初始化 ---------- */
+  /* ---------------- 初始化 ---------------- */
   function init() {
     const wrap = $('pcStyles');
     if (!wrap) return;
@@ -385,7 +472,7 @@
 
     $('pcGo').onclick = generate;
     $('pcDownloadAll').onclick = () => state.fullCanvas && download(state.fullCanvas, 'travel-postcard.png');
-    $('pcDownloadHalf').onclick = () => state.cardCanvas && download(state.cardCanvas, 'postcard-illustration.png');
+    $('pcDownloadHalf').onclick = () => state.cardCanvas && download(state.cardCanvas, 'postcard-front.png');
     $('pcRegen').onclick = generate;
 
     ['pcPlace', 'pcDate'].forEach((id) => {
@@ -394,7 +481,6 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else init();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
