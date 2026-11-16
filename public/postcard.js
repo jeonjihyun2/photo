@@ -10,16 +10,11 @@
 
   const W = 1536;
   const H = 2048;
-  const SPLIT = 0.55;
-  const TOP_H = Math.round(H * SPLIT);
 
-  const M = 56;                       // 卡片外边距
-  const CARD_X = M;
-  const CARD_W = W - M * 2;
-  const CARD_TOP = TOP_H - 26;        // 撕边略微压住原片
-  const CARD_BOTTOM = H - M;
-  const CARD_H = CARD_BOTTOM - CARD_TOP;
-  const CAP_H = 176;                  // 底部文字条高度
+  const TOP_H = 1064;                 // 上半原片区域
+  const CARD_TOP = 1040;              // 撕边位置（略微压住原片）
+  const ART_PAD = 10;                 // 撕边下方留一条纸边
+  const BAND_H = 140;                 // 底部文字纸带
 
   const INK = '#26221E';
   const MUT = '#7B7268';
@@ -100,168 +95,156 @@
 
   /* ---------- 合成绘制 ---------- */
   // xStart / yStart：导出局部时把绝对坐标平移
-  function paint(canvas, xStart, yStart, opts) {
+  function paint(canvas, yStart, opts) {
     const o = opts || {};
     const style = STYLES.find((s) => s.id === state.styleId) || STYLES[0];
     const ctx = canvas.getContext('2d');
 
     ctx.save();
-    ctx.translate(-xStart, -yStart);
+    ctx.translate(0, -yStart);
 
     // 底色
-    ctx.fillStyle = o.cardOnly ? style.paper : '#E9DFCE';
-    ctx.fillRect(xStart, yStart, W - xStart, H - yStart);
+    ctx.fillStyle = o.cardOnly ? style.paper : '#EFE7D8';
+    ctx.fillRect(0, yStart, W, H - yStart);
 
     // 1) 上半部分：原片，等比完整显示（不裁切、不拉伸）
     if (!o.cardOnly && state.photo) {
       const im = state.photo;
-      const s = Math.min(W / im.naturalWidth, TOP_H / im.naturalHeight);
-      const dw = im.naturalWidth * s;
-      const dh = im.naturalHeight * s;
-      const dx = (W - dw) / 2;
-      const dy = (TOP_H - dh) / 2;
-      ctx.drawImage(im, dx, dy, dw, dh);
-      // 原片底边极轻的压暗，让撕边有层次
-      const g = ctx.createLinearGradient(0, TOP_H - 70, 0, TOP_H);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.10)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, TOP_H - 70, W, 70);
+      const sc = Math.min(W / im.naturalWidth, TOP_H / im.naturalHeight);
+      const dw = im.naturalWidth * sc;
+      const dh = im.naturalHeight * sc;
+      ctx.drawImage(im, (W - dw) / 2, (TOP_H - dh) / 2, dw, dh);
     }
 
-    // 2) 纸卡：手撕纸边缘
-    const steps = 110;
+    // 2) 纸卡（下半），手撕纸边缘
+    const steps = 128;
     const edge = [];
     for (let i = 0; i <= steps; i++) {
       const x = (W / steps) * i;
-      const y = CARD_TOP + Math.sin(i * 1.6) * 4.5 + Math.sin(i * 0.37 + 1) * 8;
+      const y = CARD_TOP + Math.sin(i * 1.45) * 4 + Math.sin(i * 0.33 + 1) * 8;
       edge.push([x, y]);
     }
+
+    // 3) 插画：满幅铺满下半张卡片
+    const artTop = CARD_TOP + ART_PAD;
+    const artH = H - artTop;
+    if (state.illo) {
+      const im = state.illo;
+      const sc = Math.max(W / im.naturalWidth, artH / im.naturalHeight);
+      const dw = im.naturalWidth * sc;
+      const dh = im.naturalHeight * sc;
+      ctx.drawImage(im, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
+    } else {
+      ctx.fillStyle = '#F3EADA';
+      ctx.fillRect(0, artTop, W, artH);
+      ctx.strokeStyle = 'rgba(38,34,30,0.18)';
+      ctx.setLineDash([12, 9]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(40.5, artTop + 40.5, W - 81, artH - 81);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(90,80,64,0.8)';
+      ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('AI 插画 · 满幅', W / 2, artTop + artH / 2);
+      ctx.textAlign = 'left';
+    }
+
+    // 4) 撕边纸沿（盖在插画顶部，露出纸张厚度）
     ctx.beginPath();
     ctx.moveTo(0, edge[0][1]);
-    edge.forEach((p) => ctx.lineTo(p[0], p[1]));
-    ctx.lineTo(W, CARD_BOTTOM);
-    ctx.lineTo(0, CARD_BOTTOM);
+    edge.forEach((pt) => ctx.lineTo(pt[0], pt[1]));
+    ctx.lineTo(W, artTop + 6);
+    ctx.lineTo(0, artTop + 6);
     ctx.closePath();
-
     ctx.save();
-    ctx.shadowColor = 'rgba(60,45,25,0.20)';
-    ctx.shadowBlur = o.cardOnly ? 0 : 20;
-    ctx.shadowOffsetY = -5;
+    ctx.shadowColor = 'rgba(48,36,20,0.16)';
+    ctx.shadowBlur = o.cardOnly ? 0 : 16;
+    ctx.shadowOffsetY = 4;
     ctx.fillStyle = style.paper;
     ctx.fill();
     ctx.restore();
 
-    // 纸张纤维颗粒（固定随机，保证整张/半张导出一致）
+    // 5) 底部文字纸带
+    const bandTop = H - BAND_H;
+    ctx.fillStyle = style.paper;
+    ctx.fillRect(0, bandTop, W, BAND_H);
+    ctx.strokeStyle = 'rgba(38,34,30,0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, bandTop + 0.5);
+    ctx.lineTo(W, bandTop + 0.5);
+    ctx.stroke();
+
+    // 纸张纤维颗粒（固定随机，整张/半张导出一致）
     const rnd = mulberry32(20260116);
     ctx.save();
-    ctx.globalAlpha = 0.035;
+    ctx.globalAlpha = 0.03;
     ctx.fillStyle = '#6B5F4D';
-    for (let i = 0; i < 3600; i++) {
-      const gx = rnd() * W;
-      const gy = CARD_TOP + 8 + rnd() * (CARD_H - 16);
-      ctx.fillRect(gx, gy, 1, 1);
+    for (let i = 0; i < 1800; i++) {
+      ctx.fillRect(rnd() * W, bandTop + 2 + rnd() * (BAND_H - 4), 1, 1);
     }
     ctx.restore();
 
-    // 3) 插画（等比完整显示，纸张留边 = 装裱感）
-    const ix = CARD_X + 26;
-    const iy = CARD_TOP + 40;
-    const iw = CARD_W - 52;
-    const ih = CARD_H - CAP_H - 40;
-
-    if (state.illo) {
-      const im = state.illo;
-      const s = Math.min(iw / im.naturalWidth, ih / im.naturalHeight);
-      const dw = im.naturalWidth * s;
-      const dh = im.naturalHeight * s;
-      const dx = ix + (iw - dw) / 2;
-      const dy = iy + (ih - dh) / 2;
-      ctx.drawImage(im, dx, dy, dw, dh);
-      ctx.strokeStyle = 'rgba(38,34,30,0.13)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(dx + 0.5, dy + 0.5, dw - 1, dh - 1);
-    } else {
-      ctx.strokeStyle = 'rgba(38,34,30,0.18)';
-      ctx.setLineDash([10, 8]);
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(ix + 0.5, iy + 0.5, iw - 1, ih - 1);
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(123,114,104,0.75)';
-      ctx.font = '400 26px "Helvetica Neue", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('AI 插画将出现在这里', ix + iw / 2, iy + ih / 2);
-      ctx.textAlign = 'left';
-    }
-
-    // 4) 文字条
-    const capTop = CARD_BOTTOM - CAP_H;
-    ctx.strokeStyle = 'rgba(38,34,30,0.16)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(CARD_X + 26, capTop + 0.5);
-    ctx.lineTo(CARD_X + CARD_W - 26, capTop + 0.5);
-    ctx.stroke();
-
     const place = ($('pcPlace') && $('pcPlace').value.trim()) || '';
     const date = ($('pcDate') && $('pcDate').value.trim()) || '';
+    const tx = 64;
 
-    const tx = CARD_X + 36;
     if (place || date) {
-      // 小标签
       ctx.fillStyle = MUT;
-      ctx.font = '600 14px "Helvetica Neue", Arial, sans-serif';
-      spaced(ctx, 'TRAVEL MOMENT', tx, capTop + 46, 2.6);
+      ctx.font = '600 13px "Helvetica Neue", Arial, sans-serif';
+      spaced(ctx, 'TRAVEL MOMENT', tx, bandTop + 40, 3);
 
-      let cursor = capTop + 46;
       if (place) {
         ctx.fillStyle = INK;
-        ctx.font = '500 44px "Songti SC", "Noto Serif SC", Georgia, serif';
-        ctx.fillText(place, tx - 1, capTop + 100);
-        cursor = capTop + 100;
-      }
-      if (date) {
-        ctx.fillStyle = MUT;
-        ctx.font = '400 24px "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText(date, tx, cursor + 34);
+        ctx.font = '500 42px "Songti SC", "Noto Serif SC", Georgia, serif';
+        ctx.fillText(place, tx - 1, bandTop + 86);
+        if (date) {
+          ctx.fillStyle = MUT;
+          ctx.font = '400 21px "Helvetica Neue", Arial, sans-serif';
+          ctx.fillText(date, tx, bandTop + 118);
+        }
+      } else {
+        ctx.fillStyle = INK;
+        ctx.font = '500 30px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText(date, tx, bandTop + 92);
       }
     }
 
-    // 5) 邮戳（装饰，不编造内容）
-    const pmCx = CARD_X + CARD_W - 96;
-    const pmCy = capTop + CAP_H / 2 + 4;
+    // 6) 邮戳
+    const pmCx = W - 96;
+    const pmCy = bandTop + BAND_H / 2 + 2;
     ctx.strokeStyle = style.accent;
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.5;
     ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(pmCx, pmCy, 58, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(pmCx, pmCy, 48, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(pmCx, pmCy, 49, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(pmCx, pmCy, 40, 0, Math.PI * 2); ctx.stroke();
 
     ctx.save();
     ctx.fillStyle = style.accent;
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.7;
     ctx.textAlign = 'center';
     if (date) {
-      ctx.font = '400 17px "Helvetica Neue", Arial, sans-serif';
-      ctx.fillText(date, pmCx, pmCy + 6);
+      ctx.font = '400 15px "Helvetica Neue", Arial, sans-serif';
+      ctx.fillText(date, pmCx, pmCy + 5);
     } else {
-      ctx.font = '600 13px "Helvetica Neue", Arial, sans-serif';
-      spacedCenter(ctx, 'POST', pmCx, pmCy + 5, 2);
+      ctx.font = '600 12px "Helvetica Neue", Arial, sans-serif';
+      spacedCenter(ctx, 'POST', pmCx, pmCy + 4, 2);
     }
     ctx.textAlign = 'left';
     ctx.restore();
 
     // 波浪邮线
     ctx.save();
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.4;
     ctx.strokeStyle = style.accent;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.5;
     for (let k = 0; k < 3; k++) {
-      const yy = pmCy - 14 + k * 14;
+      const yy = pmCy - 12 + k * 12;
       ctx.beginPath();
-      for (let x = pmCx - 210; x <= pmCx - 78; x += 2) {
+      for (let x = pmCx - 190; x <= pmCx - 66; x += 2) {
         const y = yy + Math.sin(x / 7) * 3;
-        if (x === pmCx - 210) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        if (x === pmCx - 190) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
@@ -283,12 +266,12 @@
     if (!state.photo) return;
     const full = document.createElement('canvas');
     full.width = W; full.height = H;
-    paint(full, 0, 0, {});
+    paint(full, 0, {});
     state.fullCanvas = full;
 
     const card = document.createElement('canvas');
-    card.width = CARD_W; card.height = CARD_H;
-    paint(card, CARD_X, CARD_TOP, { cardOnly: true });
+    card.width = W; card.height = H - CARD_TOP;
+    paint(card, CARD_TOP, { cardOnly: true });
     state.cardCanvas = card;
 
     $('pcResultImg').src = full.toDataURL('image/png');
