@@ -20,9 +20,9 @@
   const IX = (W - IW) / 2;
   const IY = 1130;
   const BOTTOM_Y = 1952;
-  const PM_CX = 1352;
-  const PM_CY = 1036;
-  const PM_R = 142;
+  const PM_CX = 1268;
+  const PM_CY = 1030;
+  const PM_R = 118;
 
   const PAPER = '#F2EBD6';
   const PAPER_HI = '#FBF7E9';
@@ -135,8 +135,8 @@
 
     const rnd = mulberry32(918273);
     c.globalCompositeOperation = 'destination-out';
-    const step = 3;
-    const amp = 9;
+    const step = 4;
+    const amp = 15;
 
     for (let x = 0; x < w; x += step) {
       const wob = amp + Math.sin(x / 26) * 5 + rnd() * 9;
@@ -154,11 +154,18 @@
       const wob = amp + Math.sin(y / 27 + 3) * 4 + rnd() * 8;
       c.fillRect(w - Math.max(0, wob), y, Math.max(0, wob), step + 1);
     }
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 2200; i++) {
       const t = rnd();
       const x = rnd() * w;
-      const y = (t < 0.5 ? rnd() * 26 : h - rnd() * 26);
-      c.fillRect(x, y, rnd() * 5 + 1, rnd() * 5 + 1);
+      const y = (t < 0.5 ? rnd() * 34 : h - rnd() * 34);
+      c.fillRect(x, y, rnd() * 7 + 1, rnd() * 7 + 1);
+    }
+    // 两侧飞白
+    for (let i = 0; i < 1200; i++) {
+      const t = rnd();
+      const y = rnd() * h;
+      const x = (t < 0.5 ? rnd() * 34 : w - rnd() * 34);
+      c.fillRect(x, y, rnd() * 7 + 1, rnd() * 7 + 1);
     }
     return off;
   }
@@ -167,42 +174,47 @@
   function postmark(ctx, cx, cy, r, text) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(-0.16);
+    ctx.rotate(-0.14);
     ctx.strokeStyle = PMBLUE;
     ctx.fillStyle = PMBLUE;
-    ctx.globalAlpha = 0.52;
+    ctx.globalAlpha = 0.60;
 
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 4.5;
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(0, 0, r - 17, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(0, 0, r - 15, 0, Math.PI * 2); ctx.stroke();
 
-    ctx.font = '600 15px "American Typewriter", "Courier New", monospace';
+    // 环内小点
+    ctx.globalAlpha = 0.5;
+    for (let k = 0; k < 28; k++) {
+      const a = (Math.PI * 2 / 28) * k;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * (r - 7.5), Math.sin(a) * (r - 7.5), 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 中间日期
+    ctx.globalAlpha = 0.62;
     ctx.textAlign = 'center';
-    ctx.fillText('POSTAGE', 0, -r + 30);
-    ctx.save();
-    ctx.translate(0, r - 32);
-    ctx.rotate(Math.PI);
-    ctx.fillText('POST CARD', 0, 0);
-    ctx.restore();
-
     const inner = text || 'POST';
-    const fs = inner.length > 9 ? 14 : (inner.length > 6 ? 17 : 22);
+    const fs = inner.length > 9 ? 15 : (inner.length > 6 ? 18 : 24);
     ctx.font = `500 ${fs}px "American Typewriter", "Courier New", monospace`;
-    ctx.fillText(inner, 0, 8);
-    ctx.font = '400 13px "American Typewriter", "Courier New", monospace';
-    ctx.fillText('········', 0, 30);
+    ctx.fillText(inner, 0, 6);
+    ctx.font = '400 12px "American Typewriter", "Courier New", monospace';
+    ctx.globalAlpha = 0.45;
+    ctx.fillText('POST CARD', 0, 32);
     ctx.textAlign = 'left';
 
-    ctx.globalAlpha = 0.45;
+    // 波浪邮线（不出画布）
+    ctx.globalAlpha = 0.42;
     ctx.lineWidth = 3;
+    const xEnd = Math.min(W - cx - 24, r + 132);
     for (let k = 0; k < 4; k++) {
-      const yy = -34 + k * 22;
+      const yy = -30 + k * 20;
       ctx.beginPath();
-      const xEnd = W - cx + 120;
-      for (let x = r + 6; x <= xEnd; x += 2) {
-        const y = yy + Math.sin(x / 22) * 6;
-        if (x === r + 6) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      for (let x = r + 8; x <= xEnd; x += 2) {
+        const y = yy + Math.sin(x / 20) * 5.5;
+        if (x === r + 8) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
